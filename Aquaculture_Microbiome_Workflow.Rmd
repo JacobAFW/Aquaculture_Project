@@ -653,17 +653,24 @@ ps2.Microbiome <- subset_samples(ps2, Type == "Microbiome") %>%
 ### PCoA and Bray-Curtis.
 
 ```{r, fig.cap="PCoA plot of Bray-Curtis matrix", warning=F, message=F}
-ps_ordination <- ordinate(ps2.Microbiome, method = "PCoA", distance = "bray")
+ordination_plots <- function(filtered_ps, variable, vis_method, dist_method){
+  
+# ordinate
+ps_ordination <- ordinate(filtered_ps, method = vis_method, distance = dist_method)
 
+# get eignenvalues
 evals <- ps_ordination$values$Eigenvalues
 
-plot_ordination(ps2.Microbiome, ps_ordination, color = "Date", 
+# generate plot
+plot_ordination(filtered_ps, ps_ordination, color = variable, 
   title = "PCoA (Bray-Curtis)") +
-  labs(col = "Date") +
+  labs(col = variable) +
   coord_fixed(sqrt(evals[2] / evals[1])) +
   geom_point(size = 2) 
 
-rm(list = c("ps_ordination", "evals"))
+ }
+
+ordination_plots(ps2.Microbiome, "Date", "PCoA", "bray")
 ```
 
  - Export plot.
@@ -932,77 +939,39 @@ sapply(c("DESeq2", "phyloseq", "dplyr", "ggplot2", "grid",
 
 ### Explore clustering of variables with PCoA and Bray-Curtis.
 
-```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by date.", warning=F, message=F}
-ordination_plots <- function(filtered_ps, variable){
-  
-# ordinate
-ps_ordination <- ordinate(filtered_ps, method = "PCoA", distance = "bray")
-
-# get eignenvalues
-evals <- ps_ordination$values$Eigenvalues
-
-# generate plot
-plot_ordination(filtered_ps, ps_ordination, color = variable, 
-  title = "PCoA (Bray-Curtis)") +
-  labs(col = variable) +
-  coord_fixed(sqrt(evals[2] / evals[1])) +
-  geom_point(size = 2) 
-
- }
-
-ordination_plots(ps2.Microbiome, "Date")
-```
-
 ```{r}
-ordination_plots <- function(filtered_ps, variable, vis_method, dist_method){
-  
-# ordinate
-ps_ordination <- ordinate(filtered_ps, method = "PCoA", distance = "bray")
-
-# get eignenvalues
-evals <- ps_ordination$values$Eigenvalues
-
-# generate plot
-plot_ordination(filtered_ps, ps_ordination, color = variable, 
-  title = "PCoA (Bray-Curtis)") +
-  labs(col = variable) +
-  coord_fixed(sqrt(evals[2] / evals[1])) +
-  geom_point(size = 2) 
-
- }
-
 ordination_plots(ps2.Microbiome, "Date", "PCoA", "bray")
 ```
 
 ```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by rain (mm).", warning=F, message=F}
-ordination_plots(ps2.Microbiome, "RainGauge_mm")
+ordination_plots(ps2.Microbiome, "RainGauge_mm", "PCoA", "bray")
 ```
 
 ```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by temperature (C).", warning=F, message=F}
-ordination_plots(ps2.Microbiome, "Temperature_C")
+ordination_plots(ps2.Microbiome, "Temperature_C", "PCoA", "bray")
 ```
  
 ```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by prasite burden.", warning=F, message=F}
-ordination_plots(ps2.Microbiome, "parasite_burden")
+ordination_plots(ps2.Microbiome, "parasite_burden", "PCoA", "bray")
 ```
 
 
 ```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by ddPCR.", warning=F, message=F}
-ordination_plots(ps2.Microbiome, "ddPCR")
+ordination_plots(ps2.Microbiome, "ddPCR", "PCoA", "bray")
 ```
 
 ```{r, fig.cap="PCoA plot of Bray-Curtis distances coloured by pH.", warning=F, message=F}
-ordination_plots(ps2.Microbiome, "pH")
+ordination_plots(ps2.Microbiome, "pH", "PCoA", "bray")
 ```
 
 
 ```{r, eval=F}
-grid.arrange(ordination_plots(ps2.Microbiome, "Date"), 
-             ordination_plots(ps2.Microbiome, "RainGauge_mm"), 
-             ordination_plots(ps2.Microbiome, "Temperature_C"), 
-             ordination_plots(ps2.Microbiome, "parasite_burden"),
-             ordination_plots(ps2.Microbiome, "ddPCR"),
-             ordination_plots(ps2.Microbiome, "pH"),ncol=2)
+grid.arrange(ordination_plots(ps2.Microbiome, "Date", "PCoA", "bray"), 
+             ordination_plots(ps2.Microbiome, "RainGauge_mm", "PCoA", "bray"), 
+             ordination_plots(ps2.Microbiome, "Temperature_C", "PCoA", "bray"), 
+             ordination_plots(ps2.Microbiome, "parasite_burden", "PCoA", "bray"),
+             ordination_plots(ps2.Microbiome, "ddPCR", "PCoA", "bray"),
+             ordination_plots(ps2.Microbiome, "pH", "PCoA", "bray"),ncol=2)
 ```
 
  - **Date** seems to represent the clustering really well.
@@ -1736,7 +1705,13 @@ glm_data <- subset_samples(ps3, Type == "Microbiome") %>%
 glm_data <- centre_and_scale(glm_data)
 ```
 
-Test for collinearity
+## Major assumptions for logisitic regression models
+  - Independent observations.
+  - Collinearity.
+  - Correct model specifications.
+  - Errorless measurement of outcome variable and predictors.
+  
+## Test for collinearity
  - this will differ slightly then the one for DESeq2 as turbidity was removed the DESeq2 test due to a lack of significant findings when conducting univariate analysis.
 ```{r}
 # full 
@@ -1753,13 +1728,112 @@ glm_data %>%
  - Giana's Suggestions: "To choose from the water quality parameters, my preference would be to keep first the rain levels, second Temperature, third turbidity, fourth Oxygen and then pH".
  - I would argue that Rain would be a better option over temperature based on the PCoA.
 
-### Fit Model
+ddPCR, Week, ng.uL
+
+## Fit Model
 
 ```{r, warning=F, message=F, results='hide'}
-lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") %>% summary()
+global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") 
+
+summary(global)
 ```
 
-Try model without taxonomy 
+###########################################
+
+## Test for linearity and extreme outliers
+**Linearity tests are disputable, most text-books dont test even include it. Additionally, if we find oulers that are "major contributers" one option is to make no changes and just mention it.**
+```{r, message=F, warning=F}
+linearity_test <- function(data, model, variables){
+# get probabilities
+probabilities <- predict(model, type = "response")
+
+# get data
+mydata <- data %>%
+  select(-c(variables)) %>% 
+  select_if(is.numeric) 
+
+# get predictor names
+predictors <- colnames(mydata)
+
+# get logit data
+mydata <- mydata %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+
+# plot logit
+ggplot(mydata, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "lm") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+}
+
+c("ddPCR", "Week", "ng.uL") %>% 
+linearity_test(glm_data, global, .)
+```
+
+**From the linearity test it looks like most the variables arent linear, and we have many outliers. It's worth testing for influential data with Cooks distances,and then consider removing the ouliers and re-test the linearity of variables. Then compare this AIC to the original global model**
+
+```{r}
+# Plot cooks distances
+global %>% 
+  cooks.distance() %>% 
+  plot(ylim = c(0, 10)) %>% 
+  abline(h = 100/nrow(glm_data), lty = 2, col = "steelblue")
+
+# Identify influential points
+cooksD <- cooks.distance(global)
+
+influential_obs <- as.numeric(names(cooksD)[(cooksD > (100/nrow(glm_data)))])
+
+# Define new data frame with influential points removed
+outliers_removed <- glm_data[-influential_obs, ]
+
+# Create new model with outliers removed
+global2 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = outliers_removed, family = "binomial")
+
+summary(global2)
+
+# Plot linearity test
+c("ddPCR", "Week", "ng.uL") %>% 
+  linearity_test(outliers_removed, global2, .)
+
+rm()
+```
+
+**The AIC is much better with this model, the plots look quite a bit better, but the cooks cutoff is set much higher than the rule of thumb cutoff (4/nrow), as this would reduce our number of samples to a point where we probably can't have a multivariant model.**
+
+Try with the reduced model (global 4 from backwards selection).
+
+```{r}
+# Plot cooks distances
+global4 %>% 
+  cooks.distance() %>% 
+  plot(ylim = c(0, 10)) %>% 
+  abline(h = 100/nrow(glm_data), lty = 2, col = "steelblue")
+
+# Identify influential points
+cooksD <- cooks.distance(global4)
+
+influential_obs <- as.numeric(names(cooksD)[(cooksD > (100/nrow(glm_data)))])
+
+# Define new data frame with influential points removed
+outliers_removed <- glm_data[-influential_obs, ]
+
+# Create new model with outliers removed
+global2 <- lme4::glmer(parasite_burden ~ RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = outliers_removed, family = "binomial")
+
+# Plot linearity test
+c("ddPCR", "Week", "ng.uL") %>% 
+  linearity_test(outliers_removed, global2, .)
+
+rm()
+```
+
+##############################
+
+
+Try other model combinations (e.g. without taxonomy)
 
 ```{r}
 lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + (1|Date), data = glm_data, family = "binomial") %>% summary()
@@ -1767,7 +1841,7 @@ lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_P
 
 **AIC suggests taxonomy model is better.**
 
-#### Use [allFit](https://www.rdocumentation.org/packages/lme4/versions/1.1-26/topics/allFit) to see why we might be getting covergence issues
+#### Use [allFit](https://www.rdocumentation.org/packages/lme4/versions/1.1-26/topics/allFit) to see why we might be getting covergence issues.
 
  - If they all work then any non-convergence warning is a false positive.
 
@@ -1798,8 +1872,6 @@ dfun <- function(x) {
   names(x)[2] <- "dAIC"
   x
 }
-
-global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial")
 
 dfun(drop1(global))
 ```
