@@ -40,7 +40,7 @@ sapply(c("dada2", "phyloseq", "DECIPHER", "phangorn", "BiocManager", "BiocStyle"
 ### Organise forward and reverse fastq filenames into own lists (check file format).
  - First define the file path to the directory containing the fastq files (we will use this several times).
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 path <-"GKB-HK-200130_Giana/RawData/Data_Combined"
 
 fnFs <- sort(list.files(path, pattern="_1.fq.gz", full.names = TRUE))
@@ -50,7 +50,7 @@ fnRs <- sort(list.files(path, pattern="_2.fq.gz", full.names = TRUE))
 
 ### Extract sample names.
 
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
@@ -58,17 +58,17 @@ sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 
 ### Check quality of Forward and Reverse Reads (used to define truncLen in filtering).
 
-```{r, warning=F, fig.cap="Quality of forward reads.", message=F}
+```{r, warning=F, fig.cap="Quality of forward reads.", message=F, eval=F}
 plotQualityProfile(fnFs[1:2])
 ```
 
-```{r, warning=F, fig.cap="Quality of reverse reads.", message=F}
+```{r, warning=F, fig.cap="Quality of reverse reads.", message=F, eval=F}
 plotQualityProfile(fnRs[1:2])
 ```
 
 ### Assign names for filtered reads.
 
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
@@ -83,7 +83,7 @@ filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
  - The number of reads filtered is checked. If reads are too low, can alter parameters.
  - **225 produces no reads out... Are the reads only 200bp long? - ask Giana**
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = c(220, 220), 
                      maxN = 0, 
                      maxEE = c(2,2), 
@@ -91,6 +91,9 @@ out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = c(220, 220),
                      rm.phix = TRUE,
                      compress = TRUE, 
                      multithread = FALSE) # windows can't support multithread
+```
+
+```{r, warning=F, message=F, eval=F}
 head(out)
 ```
 
@@ -99,7 +102,7 @@ head(out)
 ### Calculate Error Rates.
  - Error rates are used for sample ineference downstream.
  
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F, results='hide', eval=F}
 errF <- learnErrors(filtFs, multithread = TRUE)
 
 errR <- learnErrors(filtRs, multithread = TRUE)
@@ -108,11 +111,11 @@ errR <- learnErrors(filtRs, multithread = TRUE)
 ### Plot error rates. 
  - Estimated error rates (black line) should be a good fit to observed rates (points) and error should decrease.
  
-```{r, warning=F, fig.cap="Error rates for forward reads", message=F}
+```{r, warning=F, fig.cap="Error rates for forward reads", message=F, eval=F}
 plotErrors(errF, nominalQ = TRUE)
 ```
 
-```{r, warning=F, fig.cap="Error rates for reverse reads.", message=F}
+```{r, warning=F, fig.cap="Error rates for reverse reads.", message=F, eval=F}
 plotErrors(errR, nominalQ = TRUE)
 ```
 
@@ -120,7 +123,7 @@ plotErrors(errR, nominalQ = TRUE)
  - Combine indentical sequences into unique sequence bins.
  - Name the derep-class objects by the sample name.
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 derepFs <- derepFastq(filtFs, verbose = TRUE)
 
 derepRs <- derepFastq(filtRs, verbose = TRUE)
@@ -132,7 +135,7 @@ names(derepRs) <- sample.names
 
 ### Sequence Inference.
 
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F, results='hide', eval=F}
 dadaFs <- dada(derepFs, err = errF, multithread = F)
 
 dadaRs <- dada(derepRs, err = errR, multithread = F)
@@ -140,7 +143,7 @@ dadaRs <- dada(derepRs, err = errR, multithread = F)
 
 ### Inspect denoised data.
 
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F, results='hide', eval=F}
 dadaFs[[1]]
 
 dadaRs[[1]]
@@ -150,7 +153,7 @@ dadaRs[[1]]
  - Removes paired reads that do not perfectly overlap.
  - Arguments represent infered samples AND denoised reads.
  
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F, results='hide', eval=F}
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose = TRUE)
 ```
 
@@ -159,7 +162,7 @@ mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose = TRUE)
 ### Construct ASV table.
  - Check dimentions and inspect distribution of sequence lengths.
  
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F, results='hide', eval=F}
 seqtab <- makeSequenceTable(mergers)
 
 dim(seqtab)
@@ -168,7 +171,8 @@ table(nchar(getSequences(seqtab)))
 ```
 
 ### Remove chimeras.
-```{r, warning=F, message=F}
+
+```{r, warning=F, message=F, eval=F}
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", 
                                     multithread = TRUE, verbose = TRUE)
 
@@ -177,7 +181,7 @@ rm(seqtab)
 
 ### Track reads through pipeline.
 
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 getN <- function(x) sum(getUniques(x))
 
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), 
@@ -188,12 +192,11 @@ colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "n
 rownames(track) <- sample.names
 
 head(track)
-rm(track)
 ```
 
 ## Contamination removal with *MicroDecon*.
 
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 library(microDecon)
 ```
  
@@ -203,7 +206,7 @@ library(microDecon)
  - Move blank sample columns to the start of the sequencing table.
  - Turn row names into their own column as *MicroDecon* requires that the OTUs have a unique ID in column 1.
  
-```{r}
+```{r, message=F, warning=F, eval=F}
 wrangle_microdecon <- function(seqtab.nochim){
   
 # transpose data
@@ -240,7 +243,7 @@ rm(seqtab.nochim)
 
  - get the counts for each of the a priori groups (date) for `numd.ind`, not including the blanks.
  - **Do we need to make sure the metadata and microdecon align as well?** Looks good.
-```{r}
+```{r, message=F, warning=F, eval=F}
 numb_ind_vector <- Metadata %>% 
   filter(Type == "Microbiome") %>% # remove blanks
   group_by(Date) %>% 
@@ -254,7 +257,7 @@ numb_ind_vector <- Metadata %>%
  - `numb.ind` is the number of columns for each priori grouping.
  - `taxa = F` as there is no taxonomy in the dataframe.
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 decontaminated <- decon(data = microdecon.df, numb.blanks = 7, 
                   numb.ind = numb_ind_vector$n, taxa = F)
 
@@ -263,7 +266,7 @@ rm(numb_ind_vector)
 ```
 
 #### Check *MicroDecon* Outputs.
-```{r, eval=F, message=F}
+```{r, warning=F, message=F, eval=F}
 decontaminated$decon.table
 decontaminated$reads.removed
 decontaminated$OTUs.removed
@@ -279,7 +282,7 @@ decontaminated$sum.per.group
  - Convert numeric values to integers (for downstream analysis).
  - Transpose data.
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 seqtab.microdecon <- decontaminated$decon.table %>% 
   remove_rownames() %>% 
   column_to_rownames(var = "ID") %>% 
@@ -293,7 +296,7 @@ rm(decontaminated)
 ## Assign taxonomy.
  - With optional species addition (there is an agglomeration step downstream, so you can add species now for curiosities sake, and remove later for analysis).
  
-```{r, warning=F, message=F}
+```{r, warning=F, message=F, eval=F}
 taxa <- assignTaxonomy(seqtab.microdecon, "SILVA/silva_nr_v132_train_set.fa.gz")
 
 taxa.print <- taxa # Removes sequence rownames for display only
@@ -301,15 +304,14 @@ rownames(taxa.print) <- NULL
 ```
 
 # Need to run species assignment on hpc
-```{r}
+```{r, eval=F}
 write.csv(taxa, "taxa.csv")
 
 taxa <- addSpecies(taxa, "SILVA/silva_species_assignment_v132.fa.gz") 
 ```
 
-
 ### Calculate percentage of NA taxa
-```{r}
+```{r, warning=F, message=F}
 sum(is.na(taxa))/prod(dim(taxa)) * 100
 
 apply(taxa, 2, function(col)sum(is.na(col))/length(col)) * 100
@@ -330,7 +332,7 @@ sapply(c( "tidyverse","plyr", "dplyr", "janitor", "stringi"),
 ## Import metadata and construct dataframe.
 
 Read in 16S Data (ID and dates)
-```{r,message=F,warning=F}
+```{r,message=F, warning=F}
 ID_Dates <- read.csv("Metadata/16S_Data.csv") %>%
   filter(grepl("AM", Sample)) %>%
   select(1:9, 11:12) %>%
@@ -350,7 +352,7 @@ ID_Dates$Date <- revalue(ID_Dates$Date, c("3/03/20" = "3/3/20",
 
 Read in Metadata, filter for corresponding dates (with *ID-Dates*), and get the averages for each day.
  - *NB.* The original metadata file was in html format, and the conversion to excel/csv reformats the dates, and not all in the same way. Thus the dates below have to be revalued to the same format as the ID. This doesn't pose any issues because the sampling finished in september so there is no chance of using the wrong dates. 
-```{r,message=F,warning=F}
+```{r,message=F, warning=F}
 Env_Metadata <- read.csv("Metadata/Metadata_updated.csv" ) %>% # Read in data
   slice(8:n()) %>% # Delete empty rows
   row_to_names(1) %>% # Convert first row to column names
@@ -462,7 +464,7 @@ ps1 <- subset_taxa(ps, !is.na(Phylum) & !Phylum %in% c("", "uncharacterized"))
 ```
 
 #### Check percentages of NA values left
-```{r}
+```{r, warning=F, message=F}
 sum(is.na(tax_table(ps1)))/prod(dim(tax_table(ps1))) * 100
 
 apply(tax_table(ps1), 2, function(col)sum(is.na(col))/length(col)) * 100
@@ -1046,7 +1048,9 @@ corvif <- function(data) {
  
 ```{r, eval=F}
 # Get scaled data for colinearity 
-cor_met <- sample_data(ps3.Microbiome) %>% unclass %>% as.data.frame()
+cor_met <- sample_data(ps3.Microbiome) %>% 
+  unclass %>% 
+  as.data.frame()
 
 # Model with ddPCR
 corvif(cbind(cor_met$Date, cor_met$ddPCR))
@@ -1342,36 +1346,57 @@ sample_data(ps3.Microbiome) <- sample_data(ps3.Microbiome) %>%
  
 ```{r, eval=F}
 # Get scaled data for colinearity 
-cor_met <- sample_data(ps3.Microbiome) %>% unclass %>% as.data.frame()
+cor_met <- sample_data(ps3.Microbiome) %>% 
+  unclass %>% 
+  as.data.frame()
 
 ##### Model with ddPCR
-corvif(cbind(cor_met$Temperature_C, cor_met$pH, cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$ddPCR))
+corvif(cbind(cor_met$Temperature_C, cor_met$pH, 
+             cor_met$RDO_Conc_mgL, cor_met$ORP_mV, 
+             cor_met$RainGauge_mm, cor_met$Salinity_PSU, 
+             cor_met$ddPCR))
 
 # rain
-corvif(cbind(cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$ddPCR))
+corvif(cbind(cor_met$ORP_mV, cor_met$RainGauge_mm, 
+             cor_met$Salinity_PSU, cor_met$ddPCR))
 
-corvif(cbind(cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$ddPCR))
+corvif(cbind(cor_met$RDO_Conc_mgL, cor_met$ORP_mV, 
+             cor_met$RainGauge_mm, cor_met$Salinity_PSU, 
+             cor_met$ddPCR))
 
 # temp
-corvif(cbind(cor_met$Temperature_C, cor_met$pH, cor_met$ORP_mV, cor_met$Salinity_PSU, cor_met$ddPCR))
+corvif(cbind(cor_met$Temperature_C, cor_met$pH, 
+             cor_met$ORP_mV, cor_met$Salinity_PSU, 
+             cor_met$ddPCR))
 
-corvif(cbind(cor_met$Temperature_C, cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$Salinity_PSU, cor_met$ddPCR))
+corvif(cbind(cor_met$Temperature_C, cor_met$RDO_Conc_mgL, 
+             cor_met$ORP_mV, cor_met$Salinity_PSU, 
+             cor_met$ddPCR))
 
 
 
 ##### Model With parasite_burden (high vs low)
-corvif(cbind(cor_met$Temperature_C, cor_met$pH, cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$parasite_burden))
+corvif(cbind(cor_met$Temperature_C, cor_met$pH, 
+             cor_met$RDO_Conc_mgL, cor_met$ORP_mV, 
+             cor_met$RainGauge_mm, cor_met$Salinity_PSU, 
+             cor_met$parasite_burden))
 
 # rain
-corvif(cbind(cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$parasite_burden))
+corvif(cbind(cor_met$RDO_Conc_mgL, cor_met$ORP_mV, 
+             cor_met$RainGauge_mm, cor_met$Salinity_PSU, 
+             cor_met$parasite_burden))
 
-corvif(cbind(cor_met$ORP_mV, cor_met$RainGauge_mm, cor_met$Salinity_PSU, cor_met$parasite_burden))
+corvif(cbind(cor_met$ORP_mV, cor_met$RainGauge_mm, 
+             cor_met$Salinity_PSU, cor_met$parasite_burden))
 
 # temp
-corvif(cbind(cor_met$Temperature_C, cor_met$RDO_Conc_mgL, cor_met$ORP_mV, cor_met$Salinity_PSU, cor_met$parasite_burden))
+corvif(cbind(cor_met$Temperature_C, cor_met$RDO_Conc_mgL, 
+             cor_met$ORP_mV, cor_met$Salinity_PSU, 
+             cor_met$parasite_burden))
 
-corvif(cbind(cor_met$Temperature_C, cor_met$pH, cor_met$ORP_mV, cor_met$Salinity_PSU, cor_met$parasite_burden))
-
+corvif(cbind(cor_met$Temperature_C, cor_met$pH, 
+             cor_met$ORP_mV, cor_met$Salinity_PSU, 
+             cor_met$parasite_burden))
 
 rm(cor_met)
 ```
@@ -1544,7 +1569,9 @@ grid.arrange((ggplot(abund_sums_trans) +
   nrow = 2)
 }
 
-phyloseq_to_deseq2(ps3.Microbiome, ~ Date + ddPCR) %>% calc_geo_means() %>% plot_deseq_transformation()
+phyloseq_to_deseq2(ps3.Microbiome, ~ Date + ddPCR) %>% 
+  calc_geo_means() %>% 
+  plot_deseq_transformation()
 ```
 
 
@@ -1580,7 +1607,7 @@ multi.deseq.clean %>%
 ```{r, warning=F, message=F, results='hide'}
 sapply(c("lme4", "nlme", "dplyr", "plyr", "lmerTest", "aods3", 
          "tidyverse", "ggplot2", "MuMIn", "sjPlot", "gridExtra", 
-         "grid", "car", "emmeans", "ggpubr"), 
+         "grid", "car", "emmeans", "ggpubr", "DESeq2"), 
          require, character.only = TRUE)
 ```
 
@@ -1600,17 +1627,21 @@ ggplot(aes(x = ddPCR, y = Shannon)) +
   scale_x_log10()
 ```
 
-
 Run a unviariate model to see if Shannon diversity is statistically associated with cryptocaryon.
 ```{r}
-lmer(ddPCR ~ Shannon + (1|Date), data = ps_metadata) %>% car::Anova() %>% as.data.frame(row.names = NULL)
+lmer(ddPCR ~ Shannon + (1|Date), data = ps_metadata) %>% 
+  car::Anova() %>% 
+  as.data.frame(row.names = NULL)
 
-lm(ddPCR ~ Shannon, data = ps_metadata) %>% car::Anova() %>% as.data.frame(row.names = NULL)
+lm(ddPCR ~ Shannon, data = ps_metadata) %>% 
+  car::Anova() %>% 
+  as.data.frame(row.names = NULL)
 ```
 
 **From both the plot and linear model it does not look like shannon diversity and the parasite are related.**
 
-## Explore the relationship between different variables and cryptocaryon using column plots
+## Explore the relationship between different variables and cryptocaryon using column plots.
+
 ```{r, warning=F, message=F}
 Metadata %>% 
   filter(Type == "Microbiome") %>% 
@@ -1619,18 +1650,10 @@ Metadata %>%
   geom_col()
 ```
 
-```{r, warning=F, message=F}
-Metadata %>% 
-  filter(Type == "Microbiome") %>% 
-  arrange(ddPCR) %>% 
-  ggplot(aes(x=pH, y=ddPCR, colour=Date)) + 
-  geom_col()
-```
+**It is difficult to see any clear patterns coming through.**
 
-**Interestingly, it is difficult to see any clear patterns coming through.**
+## Explore the relationship between taxa and Cryptocaryon using Heatmap of samples (columns) ordered by ddPCR and taxa as rows.
 
-
-## Explore the relationship between taxa and cryptocaryon using Heatmap of samples (columns) ordered by ddPCR and taxa as rows.
 ```{r, warning=F, message=F, eval=F}
 deseq_filter <- function(deseq_object){
   nc <- counts(deseq_object, normalized = TRUE)
@@ -1659,10 +1682,15 @@ phyloseq_to_deseq2(ps3.Microbiome, ~ parasite_burden) %>%
  - save the previous chunk as map_heat.
  - extract the labels.
  - use these labels to get the taxonomy from your the taxonomy tabel.
+ 
 ```{r, eval=F}
 map_heat$tree_row$labels
 
-taxa %>% as.data.frame() %>% rownames_to_column("ASV") %>% filter(ASV == "ASV from map_heat$tree_row$labels") %>% View()
+taxa %>% 
+  as.data.frame() %>% 
+  rownames_to_column("ASV") %>% 
+  filter(ASV == "ASV from map_heat$tree_row$labels") %>% 
+  View()
 ```
 
  - save as an object (map_heat) and then use `map_heat$tree_row$labels`.
@@ -1674,6 +1702,7 @@ Taking everything together, I think it would be best to perform a logisitc regre
 
 ## Data with DESeq2 normalised microbial counts
  - taxa are what was found to be significant using `phyloseq_to_deseq2(ps3.Microbiome, ~ parasite_burden)` with a Wald test.
+ 
 ```{r, warning=F, message=F}
 glm_data <- subset_samples(ps3, Type == "Microbiome") %>% 
   sample_data() %>% 
@@ -1701,6 +1730,7 @@ glm_data <- subset_samples(ps3, Type == "Microbiome") %>%
 ```
 
 ## Centre/Scale numerical values
+
 ```{r}
 glm_data <- centre_and_scale(glm_data)
 ```
@@ -1713,66 +1743,53 @@ glm_data <- centre_and_scale(glm_data)
   
 ## Test for collinearity
  - this will differ slightly then the one for DESeq2 as turbidity was removed the DESeq2 test due to a lack of significant findings when conducting univariate analysis.
+ 
 ```{r}
 # full 
 glm_data %>% 
-  select(parasite_burden, Temperature_C, pH, Turbidity_NTU, RDO_Conc_mgL, ORP_mV, RainGauge_mm, Salinity_PSU, NS4_marine_group, Salinirepens, Marivivens, Coraliomargarita, Acrobacter) %>% 
+  select(parasite_burden, Temperature_C, pH, Turbidity_NTU, 
+         RDO_Conc_mgL, ORP_mV, RainGauge_mm, Salinity_PSU, 
+         NS4_marine_group, Salinirepens, Marivivens, 
+         Coraliomargarita, Acrobacter) %>% 
   corvif()
 
 # final model
 glm_data %>% 
-  select(parasite_burden, Turbidity_NTU, ORP_mV, RainGauge_mm, Salinity_PSU, NS4_marine_group, Coraliomargarita, Acrobacter) %>% 
+  select(parasite_burden, Turbidity_NTU, ORP_mV, RainGauge_mm, 
+         Salinity_PSU, NS4_marine_group, Coraliomargarita, Acrobacter) %>% 
   corvif()
 ```
 
  - Giana's Suggestions: "To choose from the water quality parameters, my preference would be to keep first the rain levels, second Temperature, third turbidity, fourth Oxygen and then pH".
  - I would argue that Rain would be a better option over temperature based on the PCoA.
 
-ddPCR, Week, ng.uL
 
 ## Fit Model
 
 ```{r, warning=F, message=F, results='hide'}
-global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") 
+global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
+                        RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                        Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
 
 summary(global)
 ```
 
-###########################################
+### R2 and gof
 
-## Test for linearity and extreme outliers
-**Linearity tests are disputable, most text-books dont test even include it. Additionally, if we find oulers that are "major contributers" one option is to make no changes and just mention it.**
-```{r, message=F, warning=F}
-linearity_test <- function(data, model, variables){
-# get probabilities
-probabilities <- predict(model, type = "response")
-
-# get data
-mydata <- data %>%
-  select(-c(variables)) %>% 
-  select_if(is.numeric) 
-
-# get predictor names
-predictors <- colnames(mydata)
-
-# get logit data
-mydata <- mydata %>%
-  mutate(logit = log(probabilities/(1-probabilities))) %>%
-  gather(key = "predictors", value = "predictor.value", -logit)
-
-# plot logit
-ggplot(mydata, aes(logit, predictor.value))+
-  geom_point(size = 0.5, alpha = 0.5) +
-  geom_smooth(method = "lm") + 
-  theme_bw() + 
-  facet_wrap(~predictors, scales = "free_y")
-}
-
-c("ddPCR", "Week", "ng.uL") %>% 
-linearity_test(glm_data, global, .)
+ - Calculate the goodness of fit and R2 to check for overdispertion and see how well the data models.
+ - **Calculate these again post bakwards selection to see if backwards selection made improvements.**
+ - Use delta R2. From my understanding, both can be used for binomial but theoretical R2 makes theoretical assumptions about the observed variance, whereas the Delta is based on the data only (and can be used across most families and link functions).
+ 
+```{r, warning=F, message=F}
+gof(global)
+r.squaredGLMM(global)
 ```
+**Pretty good model fit and no overdispertion.**
 
-**From the linearity test it looks like most the variables arent linear, and we have many outliers. It's worth testing for influential data with Cooks distances,and then consider removing the ouliers and re-test the linearity of variables. Then compare this AIC to the original global model**
+
+### Extreme outliers
+**It's worth testing for influential data with Cooks distances, and then consider removing the outliers.**
 
 ```{r}
 # Plot cooks distances
@@ -1790,75 +1807,58 @@ influential_obs <- as.numeric(names(cooksD)[(cooksD > (100/nrow(glm_data)))])
 outliers_removed <- glm_data[-influential_obs, ]
 
 # Create new model with outliers removed
-global2 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = outliers_removed, family = "binomial")
+global2 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
+                         RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                         Coraliomargarita + Acrobacter + (1|Date), 
+                       data = outliers_removed, family = "binomial")
 
 summary(global2)
-
-# Plot linearity test
-c("ddPCR", "Week", "ng.uL") %>% 
-  linearity_test(outliers_removed, global2, .)
-
-rm()
 ```
 
-**The AIC is much better with this model, the plots look quite a bit better, but the cooks cutoff is set much higher than the rule of thumb cutoff (4/nrow), as this would reduce our number of samples to a point where we probably can't have a multivariant model.**
+### R2 and gof
 
-Try with the reduced model (global 4 from backwards selection).
+```{r, warning=F, message=F}
+gof(global2)
+r.squaredGLMM(global2)
+```
+
+**The AIC is much better with this model but the R2 is very poor. The the cooks cutoff is also set much higher than the rule of thumb cutoff (4/nrow), as the standard threshold would reduce our number of samples to a point where we probably can't have a multivariant model. I would argue that although many samples fall above the cutoff that we still have good dispersion and model fit.**
+
+### Try other model combinations (e.g. without taxonomy)
 
 ```{r}
-# Plot cooks distances
-global4 %>% 
-  cooks.distance() %>% 
-  plot(ylim = c(0, 10)) %>% 
-  abline(h = 100/nrow(glm_data), lty = 2, col = "steelblue")
+global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
+                        RainGauge_mm + Salinity_PSU + 
+                        (1|Date), data = glm_data, family = "binomial") 
 
-# Identify influential points
-cooksD <- cooks.distance(global4)
-
-influential_obs <- as.numeric(names(cooksD)[(cooksD > (100/nrow(glm_data)))])
-
-# Define new data frame with influential points removed
-outliers_removed <- glm_data[-influential_obs, ]
-
-# Create new model with outliers removed
-global2 <- lme4::glmer(parasite_burden ~ RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = outliers_removed, family = "binomial")
-
-# Plot linearity test
-c("ddPCR", "Week", "ng.uL") %>% 
-  linearity_test(outliers_removed, global2, .)
-
-rm()
+summary(global)
 ```
 
-##############################
+### R2 and gof
 
-
-Try other model combinations (e.g. without taxonomy)
-
-```{r}
-lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + (1|Date), data = glm_data, family = "binomial") %>% summary()
+```{r, warning=F, message=F}
+gof(global)
+r.squaredGLMM(global)
 ```
 
-**AIC suggests taxonomy model is better.**
+**AIC and R2 suggests models with taxonomy are better.**
 
-#### Use [allFit](https://www.rdocumentation.org/packages/lme4/versions/1.1-26/topics/allFit) to see why we might be getting covergence issues.
+### Use [allFit](https://www.rdocumentation.org/packages/lme4/versions/1.1-26/topics/allFit) to see why we might be getting covergence issues.
 
  - If they all work then any non-convergence warning is a false positive.
 
 ```{r}
-glmer_refit <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") %>% 
+# original model
+global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
+                        RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                        Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+
+glmer_refit <- global %>% 
   allFit() %>% 
   summary()
 
 glmer_refit$which.OK # which optimisers work
-```
-
- - Calculate the goodness of fit (how the sample data fits the distribution) and  the Pearsons Chi Square coefficient (how likely observed differences arose by chance).
- - Calculate these again post bakwards selection.
- 
-```{r, eval=F}
-lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + Salinity_PSU + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") %>% 
-  gof()
 ```
 
 
@@ -1876,37 +1876,108 @@ dfun <- function(x) {
 dfun(drop1(global))
 ```
 
-
 ```{r, warning=F, message=F}
-global2 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial")
+global2 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
+                         RainGauge_mm + NS4_marine_group + 
+                         Coraliomargarita + Acrobacter + (1|Date), 
+                       data = glm_data, family = "binomial")
 
 dfun(drop1(global2))
 ```
 
 ```{r, warning=F, message=F}
-global3 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial")
+global3 <- lme4::glmer(parasite_burden ~ Turbidity_NTU + RainGauge_mm + 
+                         NS4_marine_group + Coraliomargarita + Acrobacter + 
+                         (1|Date), data = glm_data, family = "binomial")
 
 dfun(drop1(global3))
 ``` 
 
 ```{r, warning=F, message=F}
-global4 <- lme4::glmer(parasite_burden ~ RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial")
+global4 <- lme4::glmer(parasite_burden ~ RainGauge_mm + NS4_marine_group + 
+                         Coraliomargarita + Acrobacter + (1|Date), 
+                       data = glm_data, family = "binomial")
 
 dfun(drop1(global4))
 ``` 
 
+### Does the AIC improve? 
+
 ```{r, warning=F, message=F}
-lme4::glmer(parasite_burden ~ RainGauge_mm + NS4_marine_group + Coraliomargarita + Acrobacter + (1|Date), data = glm_data, family = "binomial") %>% summary()
+summary(global4)
 ```
+**Yes.**
+
+### Do the gof and R2 improve?
+```{r, warning=F, message=F}
+gof(global4)
+r.squaredGLMM(global4)
+```
+**Yes.**
 
 ```{r, warning=F, message=F}
 qqnorm(resid(global4)) 
 ```
 
+### Try modelling this reduced model with extreme values reomoved (based on the default threshold of 4/nrow).
+
+```{r, warning=F, message=F, eval=F}
+# Identify influential points
+cooksD <- cooks.distance(global4)
+
+influential_obs <- as.numeric(names(cooksD)[(cooksD > (4/nrow(glm_data)))])
+
+# Define new data frame with influential points removed
+outliers_removed <- glm_data[-influential_obs, ]
+
+# Create new model with outliers removed
+global <- lme4::glmer(parasite_burden ~ RainGauge_mm + 
+                        NS4_marine_group + Coraliomargarita + 
+                        Acrobacter + (1|Date), 
+                      data = outliers_removed, family = "binomial")
+
+# gof and R2
+gof(global)
+r.squaredGLMM(global)
+
+# summary
+summary(global)
+```
+
+**Bad everything.**
+
+
+## Reintgeration
+
+ - Add variables from the first model back into the final model one at a time to calculate estimates, SE and p values for each.
+
+```{r, message=F, warning=F}
+lme4::glmer(parasite_burden ~ Turbidity_NTU + 
+              RainGauge_mm + NS4_marine_group + 
+              Coraliomargarita + Acrobacter + 
+              (1|Date), data = glm_data, family = "binomial") %>% 
+  summary
+```
+
+```{r, message=F, warning=F}
+lme4::glmer(parasite_burden ~ ORP_mV + 
+              RainGauge_mm + NS4_marine_group + 
+              Coraliomargarita + Acrobacter + 
+              (1|Date), data = glm_data, family = "binomial") %>% 
+  summary
+```
+
+```{r, message=F, warning=F}
+lme4::glmer(parasite_burden ~ Salinity_PSU + 
+              RainGauge_mm + NS4_marine_group + 
+              Coraliomargarita + Acrobacter + 
+              (1|Date), data = glm_data, family = "binomial") %>% 
+  summary
+```
 
 
 
-
+## Post-Hoc testing
 
 
 
