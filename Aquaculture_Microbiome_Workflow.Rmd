@@ -1271,7 +1271,7 @@ phyloseq_to_deseq2(ps.species, ~ Date + ddPCR) %>%
 
 **LRT**
 ```{r, message=F, warning=F}
-phyloseq_to_deseq2(ps3.Microbiome, ~ RainGauge_mm) %>% 
+phyloseq_to_deseq2(ps3.Microbiome, ~ parasite_burden) %>% 
     calc_geo_means() %>% 
     deseq_filter() %>% 
     DESeq(fitType = "local", test = "LRT", reduced = ~ 1) %>% 
@@ -1318,7 +1318,7 @@ centre_and_scale <- function(data1){
 # get numeric variables
 data2 <- data1 %>% 
   select_if(is.numeric)
-# entering and scaling over variables
+# centering and scaling over variables
 data3 <- sapply(data2, function(x) scale(x, center=T, scale = 2*sd(x))) %>% 
   as.data.frame() %>% 
   rownames_to_column("RowID")
@@ -1607,7 +1607,7 @@ multi.deseq.clean %>%
 ```{r, warning=F, message=F, results='hide'}
 sapply(c("lme4", "nlme", "dplyr", "plyr", "lmerTest", "aods3", 
          "tidyverse", "ggplot2", "MuMIn", "sjPlot", "gridExtra", 
-         "grid", "car", "emmeans", "ggpubr", "DESeq2"), 
+         "grid", "car", "emmeans", "ggpubr", "DESeq2", "phyloseq"), 
          require, character.only = TRUE)
 ```
 
@@ -1729,10 +1729,25 @@ glm_data <- subset_samples(ps3, Type == "Microbiome") %>%
   rownames_to_column(var = "ID")), by = "ID")
 ```
 
+## Add other options for parasite burden to try and model
+```{r}
+glm_data <- glm_data %>%
+  mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>% # parasite burden based on median
+  mutate(ddPCR_log = log(ddPCR), ddPCR_log10 = log10(ddPCR)) %>% 
+  mutate(par_med_log = ifelse(ddPCR_log > median(ddPCR_log), "High", "Low"), # median of log
+         par_mean_log = ifelse(ddPCR_log > mean(ddPCR_log), "High", "Low"), # mean of log
+         par_med_log10 = ifelse(ddPCR_log10 > median(ddPCR_log10), "High", "Low"), # median of log10
+         par_mean_log10 = ifelse(ddPCR_log10 > mean(ddPCR_log10), "High", "Low")) %>% # mean of log10
+  mutate_if(is.character, as.factor) # convert to factor
+```
+
 ## Centre/Scale numerical values
 
 ```{r}
-glm_data <- centre_and_scale(glm_data)
+glm_data <- glm_data %>% 
+  mutate_at(c("ddPCR", "ddPCR_log10", "ddPCR_log"), as.character) %>% # dont want to centre/scale our potential dependent variables
+  centre_and_scale() %>% 
+  mutate_at(c("ddPCR", "ddPCR_log10", "ddPCR_log"), as.numeric)
 ```
 
 ## Major assumptions for logisitic regression models
@@ -1976,12 +1991,444 @@ lme4::glmer(parasite_burden ~ Salinity_PSU +
 ```
 
 
-
-## Post-Hoc testing
-
+# Remove ORP and NTU from collinearity tests to find a better model
 
 
-**FINISIHED** 
+**parasite_burden**
 
-[**Link to github repo.**]()
+## Test for collinearity
+```{r}
+# full 
+glm_data %>% 
+  select(Temperature_C, pH,  
+         RDO_Conc_mgL, RainGauge_mm, Salinity_PSU, 
+         NS4_marine_group, Salinirepens, Marivivens, 
+         Coraliomargarita, Acrobacter) %>% 
+  corvif()
+
+# final model
+glm_data %>% 
+  select(RDO_Conc_mgL, RainGauge_mm, 
+         Salinity_PSU, NS4_marine_group,   
+         Coraliomargarita, Acrobacter) %>% 
+  corvif()
+```
+
+## Fit Model
+
+```{r, warning=F, message=F, eval=F}
+# original model
+global <- lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+summary(global)
+
+# gof and R2
+gof(global)
+r.squaredGLMM(global)
+
+# backwards selection
+dfun(drop1(global))
+
+global2 <- lme4::glmer(parasite_burden ~ 
+                      RainGauge_mm + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+
+dfun(drop1(global2))
+
+summary(global2)
+```
+**Same outcome as the original, with rain and three genera in the final model. With the same signficance.**
+
+
+**par_med**
+
+```{r, warning=F, message=F, eval=F}
+# original model
+global <- lme4::glmer(par_med ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+# summary
+summary(global)
+
+# gof and R2
+gof(global)
+r.squaredGLMM(global)
+
+# backwards selection
+dfun(drop1(global))
+
+global2 <- lme4::glmer(par_med ~  
+                      RainGauge_mm + Salinity_PSU +  
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial")   
+
+dfun(drop1(global2))
+
+# gof and R2
+gof(global2)
+r.squaredGLMM(global2)
+
+# summary
+summary(global2)
+```
+**Low R2 (0.5) both before and after backwards selection.**
+
+**par_med_log**
+
+```{r, warning=F, message=F, eval=F}
+# original model
+global <- lme4::glmer(par_med_log ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+# summary
+summary(global)
+
+# gof and R2
+gof(global)
+r.squaredGLMM(global)
+
+# backwards selection
+dfun(drop1(global))
+
+global2 <- lme4::glmer(par_med_log ~  
+                      RainGauge_mm + Salinity_PSU +  
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial")  
+
+dfun(drop1(global2))
+
+# gof and R2
+gof(global2)
+r.squaredGLMM(global2)
+
+# summary
+summary(global2)
+```
+**Same as above - Low R2 (0.5) both before and after backwards selection.**
+
+**par_mean_log**
+
+```{r, warning=F, message=F, eval=F}
+# original model
+global <- lme4::glmer(par_mean_log ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+# summary
+summary(global)
+
+# gof and R2
+gof(global)
+r.squaredGLMM(global)
+
+# backwards selection
+dfun(drop1(global))
+
+global2 <- lme4::glmer(par_mean_log ~  
+                      RainGauge_mm + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = "binomial") 
+
+dfun(drop1(global2))
+
+# gof and R2
+gof(global2)
+r.squaredGLMM(global2)
+
+# summary
+summary(global2)
+```
+**Global and final R2 is okay (not great) but still not as good as the original. We also achieve the same outcome.**
+
+
+**ddCPR_log**
+
+### Distribution 
+
+```{r}
+glm_data %>% 
+  ggplot() +
+  geom_histogram(aes(x = ddPCR_log))
+
+shapiro.test(glm_data$ddPCR_log)
+```
+
+**As we have a continuous non-negative dependent, but not linear then Gamma might be best. However, we can try a few and use both the gof, R2 and AIC to compare the models.**
+
+### Gaussian Model
+
+```{r, warning=F, message=F}
+global <- lme4::lmer(ddPCR_log ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), data = glm_data) 
+
+summary(global)
+gof(global)
+r.squaredGLMM(global)
+
+dfun(drop1(global))
+global2 <- lme4::lmer(ddPCR_log ~ Acrobacter + (1|Date), data = glm_data) 
+dfun(drop1(global2))
+```
+**Overdispersed, poor fit.**
+
+## Gamma Model
+
+```{r, , warning=F, message=F}
+global <- lme4::glmer(ddPCR_log ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = Gamma) 
+
+summary(global)
+gof(global)
+r.squaredGLMM(global)
+```
+
+**The previous doesn't like zeroes, which come in when log-transforming the data. So we use the original ddPCR with a log link function.**
+
+```{r, , warning=F, message=F}
+global <- lme4::glmer(ddPCR ~ RDO_Conc_mgL + 
+                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Coraliomargarita + Acrobacter + (1|Date), 
+                      data = glm_data, family = Gamma(link = "log")) 
+
+summary(global)
+```
+```{r}
+gof(global)
+r.squaredGLMM(global)
+```
+
+```{r}
+dfun(drop1(global))
+
+global2 <- lme4::glmer(ddPCR ~ RainGauge_mm + Coraliomargarita + Acrobacter + 
+                      (1|Date), data = glm_data, family = Gamma(link = "log"))
+                      
+dfun(drop1(global2))
+
+summary(global2)
+```
+
+```{r}
+gof(global2)
+r.squaredGLMM(global2)
+```
+
+**The best model using a continuous response variable.**
+
+
+# Most prevalent species comparison using high vs low 
+
+```{r, warning=F, message=F, fig.cap="Bar plots of the taxonomic distribution (relative abundance) at phylum and genus levels.", results='hide'}
+ps.species.tss <- transform_sample_counts(ps.species, function(x) x / sum(x))
+top20 <- names(sort(taxa_sums(ps.species.tss), decreasing=TRUE))[1:20]
+ps.top20 <- prune_taxa(top20, ps.species.tss)
+
+
+plot_bar_auto <- function(ps, taxonomy){
+plot_bar(ps, fill = taxonomy) + 
+    facet_wrap(~Date, scales = "free_x") + 
+    labs(title = paste0("Level:", taxonomy), y = "Abundance") + 
+    theme(legend.position = "bottom", legend.title = element_blank(), 
+    axis.title.x = element_blank(), axis.text.x = element_blank(), 
+    axis.ticks = element_blank())
+}
+
+plot_bar_auto(ps.top20, "Species")
+```
+**We havent identified the species for any of the most abundant ASVs.**
+
+We have only identified < 2% of species.
+```{r}
+apply(tax_table(ps.species), 2, function(col)sum(is.na(col))/length(col)) * 100
+```
+
+DESeq2 - Genus
+
+Add a par_med variable to ps3 object and then run DESeq2
+
+```{r, warning=F, message=F}
+sample_data(ps3.Microbiome) <- sample_data(ps3.Microbiome) %>%
+  unclass() %>%
+  as.data.frame() %>%
+  mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
+  mutate(par_med = as.factor(par_med)) %>% 
+  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate(Sample = paste0("AM", Sample)) %>% 
+  column_to_rownames("Sample") 
+
+phyloseq_to_deseq2(ps3.Microbiome, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    get_deseq_res_cat("par_med", "High", "Low") %>% 
+    remove_rownames()
+```
+
+
+ps3.Microbiome <- subset_samples(ps3, Type == "Microbiome")
+
+DESeq2 - Species
+```{r, warning=F, message=F}
+sample_data(ps.species) <- sample_data(ps.species) %>%
+  unclass() %>%
+  as.data.frame() %>%
+  mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
+  mutate(par_med = as.factor(par_med)) %>% 
+  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate(Sample = paste0("AM", Sample)) %>% 
+  column_to_rownames("Sample") 
+
+phyloseq_to_deseq2(ps.species, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    get_deseq_res_cat("par_med", "High", "Low") %>% 
+    remove_rownames()
+```
+
+
+# Heatmap of significant Genera using DESeq2 normalised data
+
+```{r, message=F, warning=F}
+sig_tax <- phyloseq_to_deseq2(ps3.Microbiome, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    get_deseq_res_cat("par_med", "High", "Low") %>% 
+    select(Genus) 
+
+sig_tax <- ps3.Microbiome %>% 
+  tax_table() %>% 
+  unclass() %>% 
+  as.data.frame() %>% 
+  filter(Genus %in% sig_tax$Genus) %>% 
+  rownames_to_column()
+
+    
+phyloseq_to_deseq2(ps3.Microbiome, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    varianceStabilizingTransformation() %>%
+    assay() %>% 
+    as.data.frame() %>% # counts of significant taxa
+    rownames_to_column() %>% 
+    filter(rowname %in% sig_tax$rowname) %>% 
+    column_to_rownames("rowname") %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    rownames_to_column("ID") %>% 
+    left_join(
+      (glm_data %>% select(ID, par_med)), 
+      by = "ID") %>% 
+    column_to_rownames("ID") %>% 
+    group_by(par_med) %>% 
+    summarise_all(mean) %>% 
+    column_to_rownames("par_med") %>% 
+    t() %>% 
+    as.data.frame() %>%  
+    rownames_to_column() %>% 
+    add_column( ID = c("Salinirepens", "Hyphomonas", "Thalassobaculum", "Salinihabitans", "Marivivens", "Coraliomargarita", "Arcobacter")) %>%  
+    column_to_rownames("ID") %>% 
+    select(-rowname) %>% View()
+    pheatmap(show_rownames = T, show_colnames = T, cluster_cols = F)# only cluster by rows
+```
+
+
+# Heatmap of top20 Genera
+
+```{r, warning=F, message=F}
+top20 <- names(sort(taxa_sums(ps3.Microbiome), decreasing=TRUE))[1:20]
+ps.top20 <- prune_taxa(top20, ps3.Microbiome)
+
+sample_data(ps.top20) <- sample_data(ps.top20) %>%
+  unclass() %>%
+  as.data.frame() %>%
+  mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
+  mutate(par_med = as.factor(par_med)) %>% 
+  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate(Sample = paste0("AM", Sample)) %>% 
+  column_to_rownames("Sample") 
+
+top20 <- phyloseq_to_deseq2(ps.top20, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    varianceStabilizingTransformation() %>% 
+    assay() %>% 
+    as.data.frame() %>% 
+    rownames_to_column()
+
+top20 %>% 
+  left_join(
+    ps3.Microbiome %>% 
+  tax_table() %>% # get the taxonomy table
+  unclass() %>% 
+  as.data.frame() %>% 
+  rownames_to_column() %>% 
+  filter(rowname %in% top20$rowname) %>% # filter the taxonomy table by the ASV's that match the top20 taxa 
+  select(rowname, Genus)) %>%  
+  column_to_rownames("Genus") %>% # assign the genus at the rownames instead of the ASV
+  select(-rowname) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column("ID") %>% 
+  left_join(
+    sample_data(ps.top20) %>% # join it with the sample data 
+      unclass() %>% 
+      as.data.frame() %>% 
+      mutate(ID = paste0("AM", ID)) %>% 
+      select(par_med, ID), by = "ID") %>%  
+  group_by(par_med) %>% 
+  summarise_all(mean) %>% # get the means for high vs low so that we have a heatmap for this comparison
+  column_to_rownames("par_med") %>% 
+  select(-ID) %>% 
+  t() %>%
+  pheatmap(show_rownames = T, show_colnames = T, cluster_cols = F)
+```
+
+DESeq2 on top20 taxa
+```{r, message=F, warning=F}
+phyloseq_to_deseq2(ps.top20, ~ par_med) %>% 
+    calc_geo_means() %>% 
+    deseq_filter() %>% 
+    DESeq(fitType = "local", test = "Wald") %>% 
+    get_deseq_res_cat("par_med", "High", "Low") %>% 
+    remove_rownames() %>% View()
+```
+
+# Barplot of top20 Genera
+```{r}
+top20 <- names(sort(taxa_sums(ps4.microbiome), decreasing=TRUE))[1:20]
+ps.top20 <- prune_taxa(top20, ps4.microbiome)
+
+sample_data(ps.top20) <- sample_data(ps.top20) %>%
+  unclass() %>%
+  as.data.frame() %>%
+  mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
+  mutate(par_med = as.factor(par_med)) %>% 
+  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate(Sample = paste0("AM", Sample)) %>% 
+  column_to_rownames("Sample") 
+
+plot_bar_auto <- function(ps, taxonomy){
+plot_bar(ps, fill = taxonomy) + 
+    facet_wrap(~par_med, scales = "free_x") + 
+    labs(title = paste0("Level:", taxonomy), y = "Abundance") + 
+    theme(legend.position = "bottom", legend.title = element_blank(), 
+    axis.title.x = element_blank(), axis.text.x = element_blank(), 
+    axis.ticks = element_blank())
+}
+
+plot_bar_auto(ps.top20, "Genus")
+```
+
 
