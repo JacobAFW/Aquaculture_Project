@@ -1584,9 +1584,9 @@ phyloseq_to_deseq2(ps3.Microbiome, ~ Date + ddPCR) %>%
     calc_geo_means() %>% 
     deseq_filter() %>% 
     DESeq(fitType = "local", test = "LRT", reduced = ~ ddPCR) %>%
-    varianceStabilizingTransformation() %>%
+    varianceStabilizingTransformation() %>% 
     assay() %>% 
-    cor() %>%
+    cor() %>% 
     pheatmap()
 ```
 
@@ -2393,6 +2393,13 @@ top20 %>%
   select(-ID) %>% 
   t() %>%
   pheatmap(show_rownames = T, show_colnames = T, cluster_cols = F)
+```
+
+```{r}
+set.seed(123)                                                     # Set seed for reproducibility
+data <- matrix(rnorm(100, 0, 10), nrow = 10, ncol = 10)           # Create example data
+colnames(data) <- paste0("col", 1:10)                             # Column names
+rownames(data) <- paste0("row", 1:10)  
 ```
 
 DESeq2 on top20 taxa
