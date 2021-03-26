@@ -1089,7 +1089,7 @@ Define function for LRT
 get_deseq_res_lrt <- function(deseq_object){
   res = results(deseq_object)
   res = res[order(res$padj, na.last = NA), ]
-  sigtab = res[(res$padj < 0.01), ] 
+  sigtab = res[(res$padj < 0.05), ] 
   sigtab = cbind(as(sigtab, "data.frame"), 
           as(tax_table(ps3.Microbiome)[rownames(sigtab), ], "matrix"))
   sigtab %>%
@@ -2272,8 +2272,6 @@ phyloseq_to_deseq2(ps3.Microbiome, ~ par_med) %>%
     remove_rownames()
 ```
 
-
-ps3.Microbiome <- subset_samples(ps3, Type == "Microbiome")
 
 DESeq2 - Species
 ```{r, warning=F, message=F}

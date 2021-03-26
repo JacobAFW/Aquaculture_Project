@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, warning=F, message=F, results='hide'}
 sapply(c("lme4", "aods3", "tidyverse", "ggplot2", "MuMIn", "gridExtra", 
-         "car", "emmeans", "ggpubr", "DESeq2", "phyloseq"), 
+         "car", "emmeans", "ggpubr", "DESeq2", "phyloseq", "sjPlot", "grid"), 
          require, character.only = TRUE)
 ```
 
@@ -236,22 +236,37 @@ r.squaredGLMM(global2)
 ```
 
 
+### Export summary as a table
+```{r, eval=F}
+tab_model(global2, show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
+          show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
+          title = "Generalised logistic regression model", 
+          file = "GLM.doc")
+```
+
+
 ## Reintgeration to calculate estimates, standard error and p values for each of the variables removed during backwards selection.
 
-```{r, message=F, warning=F}
+```{r, eval=F}
 lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
               RainGauge_mm + NS4_marine_group + 
               Coraliomargarita + Arcobacter + (1|Date), 
             data = glm_data, family = "binomial") %>% 
-  summary()
+  tab_model(show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
+            show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
+            title = "Generalised logistic regression model", 
+            file = "GLM2.doc")
 ```
 
-```{r, message=F, warning=F}
+```{r, eval=F}
 lme4::glmer(parasite_burden ~ Salinity_PSU + 
               RainGauge_mm + NS4_marine_group + 
               Coraliomargarita + Arcobacter + (1|Date), 
             data = glm_data, family = "binomial") %>% 
-  summary()
+  tab_model(show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
+           show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
+           title = "Generalised logistic regression model", 
+           file = "GLM3.doc")
 ```
 
 
@@ -273,10 +288,6 @@ plot_data <- metadata_with_taxa %>%
 ```
 
 ### Generate plot.
-global <- lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
-                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
-                      Coraliomargarita + Arcobacter + (1|Date), 
-                      data = glm_data, family = "binomial") 
 
 ```{r}
 grid.arrange(
@@ -333,8 +344,6 @@ geom_pointrange(aes(ymin = Salinity_PSU - SALINITY_PSU,
   annotate_figure(fig.lab = "F", fig.lab.face = "bold", fig.lab.size = 20),
 ncol = 3, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize = 12))
 )
-
-
 ```
 
 **Finished.**
