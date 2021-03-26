@@ -24,13 +24,13 @@ sapply(c("tidyverse", "ggplot2", "MuMIn", "gridExtra",
 
 *par_med* is a binary variable that was calculated through mutating the raw ddPCR results: `mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")` 
 
-```{r, message=F, warning=F}
+```{r, message=F, warning=F, results='markup'}
 sample_data(ps3.Microbiome) <- sample_data(ps3.Microbiome) %>%
   unclass() %>%
   as.data.frame() %>%
   mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
   mutate(par_med = as.factor(par_med)) %>% 
-  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate("Sample" = ID) %>% # change rownames to save it back into the original ps object
   mutate(Sample = paste0("AM", Sample)) %>% 
   column_to_rownames("Sample") 
 
@@ -74,10 +74,11 @@ phyloseq_to_deseq2(ps3.Microbiome, ~ par_med) %>%
     t() %>% 
     as.data.frame() %>% 
     rownames_to_column() %>% 
-    add_column( ID = c("Salinirepens", "Hyphomonas", "Thalassobaculum", "Salinihabitans", "Marivivens", "Coraliomargarita", "Arcobacter")) %>%  
+    add_column( ID = c("Salinirepens", "Hyphomonas", "Thalassobaculum", "Salinihabitans",
+                       "Marivivens", "Coraliomargarita", "Arcobacter")) %>%  
     column_to_rownames("ID") %>% 
     select(-rowname) %>% 
-    pheatmap(show_rownames = T, show_colnames = T, cluster_cols = F)# only cluster by rows
+    pheatmap(show_rownames = T, show_colnames = T, cluster_cols = F)# cluster by rows
 ```
 
 ## Heatmap of top20 Genera and parasite load (binary).
@@ -91,7 +92,7 @@ sample_data(ps.top20) <- sample_data(ps.top20) %>%
   as.data.frame() %>%
   mutate(par_med = ifelse(ddPCR > median(ddPCR), "High", "Low")) %>%
   mutate(par_med = as.factor(par_med)) %>% 
-  mutate("Sample" = ID) %>% # need to redo the rownames to save it back into the original ps object
+  mutate("Sample" = ID) %>% # change rownames to save it back into the original ps object
   mutate(Sample = paste0("AM", Sample)) %>% 
   column_to_rownames("Sample") 
 
@@ -110,7 +111,7 @@ top20 %>%
   unclass() %>% 
   as.data.frame() %>% 
   rownames_to_column() %>% 
-  filter(rowname %in% top20$rowname) %>% # filter the taxonomy table by the ASV's that match the top20 taxa 
+  filter(rowname %in% top20$rowname) %>% # filter the tax table by ASV's in top20 taxa 
   select(rowname, Genus)) %>%  
   column_to_rownames("Genus") %>% # assign the genus at the rownames instead of the ASV
   select(-rowname) %>%
@@ -124,7 +125,7 @@ top20 %>%
       mutate(ID = paste0("AM", ID)) %>% 
       select(par_med, ID), by = "ID") %>%  
   group_by(par_med) %>% 
-  summarise_all(mean) %>% # get the means for high vs low so that we have a heatmap for this comparison
+  summarise_all(mean) %>% # get means for high/low 
   column_to_rownames("par_med") %>% 
   select(-ID) %>% 
   t() %>% 
@@ -141,9 +142,9 @@ top20 %>%
   unclass() %>% 
   as.data.frame() %>% 
   rownames_to_column() %>% 
-  filter(rowname %in% top20$rowname) %>% # filter the taxonomy table by the ASV's that match the top20 taxa 
+  filter(rowname %in% top20$rowname) %>% # filter tax table by ASV's that top20 taxa 
   select(rowname, Genus)) %>%  
-  column_to_rownames("Genus") %>% # assign the genus at the rownames instead of the ASV
+  column_to_rownames("Genus") %>% # assign the genus as rownames instead of  ASVs
   select(-rowname) %>%
   t() %>% 
   as.data.frame() %>% 
