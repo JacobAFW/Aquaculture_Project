@@ -102,6 +102,7 @@ metadata_with_taxa <- subset_samples(ps3, Type == "Microbiome") %>%
   rownames_to_column(var = "ID")), by = "ID")
 ```
 
+
 ### Centre and scale numeric variables using defined function.
 
 ```{r, warning=F, message=F,  results='hide'}
@@ -123,6 +124,18 @@ data1 %>%
 
 glm_data <- metadata_with_taxa %>% centre_and_scale()
 ```
+
+
+### Explore relationship between parasite and variables
+
+```{r}
+glm_data %>% ggplot(aes(x = ddPCR, y = RainGauge_mm)) + geom_point()
+
+metadata_with_taxa %>% ggplot(aes(x = ddPCR, y = RainGauge_mm, colour = ID)) + geom_point() + scale_x_log10() + geom_smooth(method = "lm", se = T) 
+
+metadata_with_taxa %>% filter(RainGauge_mm < 800) %>% ggplot(aes(x = ddPCR, y = RainGauge_mm)) + geom_point() + scale_x_log10() + geom_smooth(method = "lm", se = T) 
+```
+
 
 ### Test for multicollinearity: define the `corvif()`function that takes metadata and creates a linear model to see if any collinearity exists between variables.
 
@@ -342,6 +355,83 @@ geom_pointrange(aes(ymin = Salinity_PSU - SALINITY_PSU,
   ylab("Salinity (PSU)") +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "F", fig.lab.face = "bold", fig.lab.size = 20),
+
+ncol = 3, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize = 12))
+)
+```
+
+
+```{r}
+grid.arrange(
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Coraliomargarita)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("Coraliomargarita") +
+  geom_text(aes(label = "**", y = 1000, x = 1.5, fontface = "bold", size = 20)) +
+  ylim(0, 1000) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "A", fig.lab.face = "bold", fig.lab.size = 20),
+
+
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Arcobacter)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("Arcobacter") +
+  geom_text(aes(label = "*", y = 100, x = 1.5, fontface = "bold", size = 20)) +
+  ylim(0, 100) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "B", fig.lab.face = "bold", fig.lab.size = 20),
+
+
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = NS4_marine_group)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("NS4 marine group") +
+  geom_text(aes(label = "*", y = 5000, x = 1.5, fontface = "bold", size = 20)) +
+  ylim(0, 5000) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "C", fig.lab.face = "bold", fig.lab.size = 20),
+
+
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = RainGauge_mm)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("Rain (mm)") +
+  geom_text(aes(label = "*", y = 1000, x = 1.5, fontface = "bold", size = 20)) +
+  ylim(0, 750) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "D", fig.lab.face = "bold", fig.lab.size = 20),
+
+
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = RDO_Conc_mgL)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("RDO (mg/L)") +
+  ylim(0, 10) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "E", fig.lab.face = "bold", fig.lab.size = 20),
+
+
+(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Salinity_PSU)) + 
+  geom_boxplot(fatten = NULL) +
+  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+               width = 0.75, size = 1, linetype = "solid") +
+  xlab("") +
+  ylab("Salinity (PSU)") +
+  ylim(30, 35) +
+  theme(legend.position = "none")) %>% 
+  annotate_figure(fig.lab = "F", fig.lab.face = "bold", fig.lab.size = 20),
+  
 ncol = 3, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize = 12))
 )
 ```
