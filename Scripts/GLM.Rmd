@@ -99,9 +99,8 @@ metadata_with_taxa <- subset_samples(ps3, Type == "Microbiome") %>%
          "Arcobacter" = "TGGGGAATATTGCACAATGGGGGAAACCCTGATGCAGCAACGCCGCGTGGAGGATGACACATTTCGGTGCGTAAACTCCTTTTATATAGGAAGATAATGACGGTACTATATGAATAAGCGCCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGCGCAAGCGTTACTCGGAATCACTGGGCGTAAAGAGCGTGTAGGCGGGTTAATAAGTTTGAAGTGAAATCCTATGGCTCAACCATAGAACTGCTTTGAAAACTGTTAACCTAGAATATGGGAGAGGTAGATGGAATTTCTGGTGTAGGGGTAAAATCCGTAGAGATCAGAAGGAATACCGATTGCGAAGGCGATCTACTGGAACATTATTGACGCTGAGACGCGAAAGCGTGGGGAGCAAACAGG", 
          "Marivivens" = "TGGGGAATCTTAGACAATGGGGGAAACCCTGATCTAGCCATGCCGCGTGAGTGACGAAGGCCTTAGGGTCGTAAAGCTCTTTCGCTGGGGAAGATAATGACTGTACCCAGTAAAGAAACCCCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGGGTTAGCGTTGTTCGGAATTACTGGGCGTAAAGCGCGCGTAGGCGGACTGGAAAGTTGGGGGTGAAATCCCGGGGCTCAACCCCGGAACGGCCTCCAAAACTATCAGTCTAGAGTTCGAGAGAGGTGAGTGGAATTCCGAGTGTAGAGGTGAAATTCGTAGATATTCGGAGGAACACCAGTGGCGAAGGCGGCTCACTGGCTCGATACTGACGCTGAGGTGCGAAAGCGTGGGGAGCAAACAGG", 
          "Salinirepens" = "TGAGGAATATTGGACAATGGGCGCAAGCCTGATCCAGCCATGCCGCGTGCAGGAAGAATGCCCTATGGGTTGTAAACTGCTTTTATTTGGGAATAAACCTCCTTACGTGTAGGGAGCTGAATGTACCAAACGAATAAGCACCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGTGCAAGCGTTATCCGGAATCATTGGGTTTAAAGGGTCCGCAGGCGGGCCTATAAGTCAGTGGTGAAATCCCATCGCTTAACGATGGAACTGCCATTGATACTGTAGGTCTTGAATTCGGTCGAAGTGGGCGGAATGTGTCATGTAGCGGTGAAATGCATAGATATGACACAGAACACCGATAGCGAAGGCAGCTCACTAGGCCTGGATTGACGCTCAGGGACGAAAGCGTGGGGAGCGAACAGG") %>% 
-  rownames_to_column(var = "ID")), by = "ID")
+  rownames_to_column(var = "ID")), by = "ID") 
 ```
-
 
 ### Centre and scale numeric variables using defined function.
 
@@ -128,12 +127,13 @@ glm_data <- metadata_with_taxa %>% centre_and_scale()
 
 ### Explore relationship between parasite and variables
 
-```{r}
-glm_data %>% ggplot(aes(x = ddPCR, y = RainGauge_mm)) + geom_point()
-
-metadata_with_taxa %>% ggplot(aes(x = ddPCR, y = RainGauge_mm, colour = ID)) + geom_point() + scale_x_log10() + geom_smooth(method = "lm", se = T) 
-
-metadata_with_taxa %>% filter(RainGauge_mm < 800) %>% ggplot(aes(x = ddPCR, y = RainGauge_mm)) + geom_point() + scale_x_log10() + geom_smooth(method = "lm", se = T) 
+```{r, eval=F}
+metadata_with_taxa %>% 
+  ggplot(aes(x = ddPCR, y = Rainfall)) + 
+  geom_point() +
+  scale_x_log10() + 
+  geom_smooth(method = "lm", se = T) + 
+  scale_y_log10()
 ```
 
 
@@ -194,14 +194,14 @@ corvif <- function(data) {
 # full 
 glm_data %>% 
   select(Temperature_C, pH,  
-         RDO_Conc_mgL, RainGauge_mm, Salinity_PSU, 
+         RDO_Conc_mgL, Rainfall, Salinity_PSU, 
          NS4_marine_group, Salinirepens, Marivivens, 
          Coraliomargarita, Arcobacter) %>% 
   corvif()
 
 # final model
 glm_data %>% 
-  select(RDO_Conc_mgL, RainGauge_mm, 
+  select(RDO_Conc_mgL, Rainfall, 
          Salinity_PSU, NS4_marine_group,   
          Coraliomargarita, Arcobacter) %>% 
   corvif()
@@ -212,7 +212,7 @@ glm_data %>%
 
 ```{r, warning=F, message=F}
 global <- lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
-                      RainGauge_mm + Salinity_PSU + NS4_marine_group + 
+                      Rainfall + Salinity_PSU + NS4_marine_group + 
                       Coraliomargarita + Arcobacter + (1|Date), 
                       data = glm_data, family = "binomial") 
 summary(global)
@@ -231,9 +231,9 @@ r.squaredGLMM(global)
 ```{r, warning=F, message=F}
 dfun(drop1(global))
 
-global2 <- lme4::glmer(parasite_burden ~ 
-                      RainGauge_mm + NS4_marine_group + 
-                      Coraliomargarita + Arcobacter + (1|Date), 
+global2 <- lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
+                      Rainfall + NS4_marine_group + 
+                      Coraliomargarita + (1|Date), 
                       data = glm_data, family = "binomial") 
 
 dfun(drop1(global2))
@@ -254,17 +254,17 @@ r.squaredGLMM(global2)
 tab_model(global2, show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
           show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
           title = "Generalised logistic regression model", 
-          file = "GLM.doc")
+          file = "C:/Users/Jacob/Desktop/Other_Projects/Aquaculture_Microbiome/Outputs/GLM.doc")
 ```
 
 
 ## Reintgeration to calculate estimates, standard error and p values for each of the variables removed during backwards selection.
 
 ```{r, eval=F}
-lme4::glmer(parasite_burden ~ RDO_Conc_mgL + 
-              RainGauge_mm + NS4_marine_group + 
-              Coraliomargarita + Arcobacter + (1|Date), 
-            data = glm_data, family = "binomial") %>% 
+lme4::glmer(parasite_burden ~ RDO_Conc_mgL + Salinity_PSU +
+                      Rainfall + NS4_marine_group + 
+                      Coraliomargarita + (1|Date), 
+                      data = glm_data, family = "binomial") %>% 
   tab_model(show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
             show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
             title = "Generalised logistic regression model", 
@@ -272,10 +272,10 @@ lme4::glmer(parasite_burden ~ RDO_Conc_mgL +
 ```
 
 ```{r, eval=F}
-lme4::glmer(parasite_burden ~ Salinity_PSU + 
-              RainGauge_mm + NS4_marine_group + 
-              Coraliomargarita + Arcobacter + (1|Date), 
-            data = glm_data, family = "binomial") %>% 
+lme4::glmer(parasite_burden ~ RDO_Conc_mgL + Arcobacter +
+                      Rainfall + NS4_marine_group + 
+                      Coraliomargarita + (1|Date), 
+                      data = glm_data, family = "binomial") %>% 
   tab_model(show.se = TRUE, string.se = "Standard Error", show.ci = FALSE, 
            show.re.var = FALSE, show.ngroups = FALSE, show.icc = FALSE, 
            title = "Generalised logistic regression model", 
@@ -309,7 +309,7 @@ geom_pointrange(aes(ymin = Coraliomargarita - CORALIOMARGARITA,
                     ymax = Coraliomargarita + CORALIOMARGARITA)) +
   xlab("") +
   ylab("Coraliomargarita") +
-  geom_text(aes(label = "**", y = 4500, x = 1.5, fontface = "bold", size = 20)) +
+  geom_text(aes(label = "*", y = 4500, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "A", fig.lab.face = "bold", fig.lab.size = 20),
 
@@ -318,7 +318,6 @@ geom_pointrange(aes(ymin = Arcobacter - ARCOBACTER,
                     ymax = Arcobacter + ARCOBACTER)) +
   xlab("") +
   ylab("Arcobacter") +
-  geom_text(aes(label = "*", y = 450, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "B", fig.lab.face = "bold", fig.lab.size = 20),
 
@@ -327,16 +326,15 @@ geom_pointrange(aes(ymin = NS4_marine_group - NS4_MARINE_GROUP,
                     ymax = NS4_marine_group + NS4_MARINE_GROUP)) +
   xlab("") +
   ylab("NS4 marine group") +
-  geom_text(aes(label = "*", y = 4500, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "C", fig.lab.face = "bold", fig.lab.size = 20),
 
-(ggplot(plot_data, aes(x = parasite_burden, y = RainGauge_mm)) + 
-geom_pointrange(aes(ymin = RainGauge_mm - RAINGAUGE_MM, 
-                    ymax = RainGauge_mm + RAINGAUGE_MM)) +
+(ggplot(plot_data, aes(x = parasite_burden, y = Rainfall)) + 
+geom_pointrange(aes(ymin = Rainfall - Rainfall, 
+                    ymax = Rainfall + Rainfall)) +
   xlab("") +
-  ylab("Rain (mm)") +
-  geom_text(aes(label = "*", y = 1000, x = 1.5, fontface = "bold", size = 20)) +
+  ylab("Rain (m)") +
+  geom_text(aes(label = "*", y = .1, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "D", fig.lab.face = "bold", fig.lab.size = 20),
 
