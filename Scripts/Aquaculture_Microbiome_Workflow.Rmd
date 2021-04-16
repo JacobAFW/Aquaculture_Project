@@ -1844,8 +1844,8 @@ r.squaredGLMM(global2)
 ### Try other model combinations (e.g. without taxonomy)
 
 ```{r}
-global <- lme4::glmer(parasite_burden ~ Turbidity_NTU + ORP_mV + 
-                        RainGauge_mm + Salinity_PSU + 
+global <- lme4::glmer(parasite_burden ~ ORP_mV + 
+                        Rainfall + Salinity_PSU + 
                         (1|Date), data = glm_data, family = "binomial") 
 
 summary(global)

@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load packages.
 
 ```{r, warning=F, message=F, results='hide'}
-sapply(c("lme4", "aods3", "tidyverse", "ggplot2", "MuMIn", "gridExtra", 
+sapply(c("lme4", "aods3", "tidyverse", "ggplot2", "MuMIn", "gridExtra", "effects", 
          "car", "emmeans", "ggpubr", "DESeq2", "phyloseq", "sjPlot", "grid"), 
          require, character.only = TRUE)
 ```
@@ -134,6 +134,12 @@ metadata_with_taxa %>%
   scale_x_log10() + 
   geom_smooth(method = "lm", se = T) + 
   scale_y_log10()
+
+metadata_with_taxa %>% 
+  ggplot(aes(x = ddPCR, y = RDO_Conc_mgL)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) 
+
 ```
 
 
@@ -285,6 +291,12 @@ lme4::glmer(parasite_burden ~ RDO_Conc_mgL + Arcobacter +
 
 ## Visualisation.
 
+### Plot effects
+```{r}
+plot(allEffects(global2))
+```
+
+
 ### Calculate the mean and standard deviation for each variable.
 
 ```{r, warning=F, message=F}
@@ -302,7 +314,7 @@ plot_data <- metadata_with_taxa %>%
 
 ### Generate plot.
 
-```{r}
+```{r, warning=F, message=F}
 grid.arrange(
 (ggplot(plot_data, aes(x = parasite_burden, y = Coraliomargarita)) + 
 geom_pointrange(aes(ymin = Coraliomargarita - CORALIOMARGARITA, 
@@ -358,79 +370,27 @@ ncol = 3, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize 
 )
 ```
 
-
-```{r}
+```{r, warning=F, message=F}
 grid.arrange(
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Coraliomargarita)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
+(ggplot(plot_data, aes(x = parasite_burden, y = Coraliomargarita)) + 
+geom_pointrange(aes(ymin = Coraliomargarita - CORALIOMARGARITA, 
+                    ymax = Coraliomargarita + CORALIOMARGARITA)) +
   xlab("") +
   ylab("Coraliomargarita") +
-  geom_text(aes(label = "**", y = 1000, x = 1.5, fontface = "bold", size = 20)) +
-  ylim(0, 1000) +
+  geom_text(aes(label = "*", y = 4500, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "A", fig.lab.face = "bold", fig.lab.size = 20),
 
-
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Arcobacter)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
+(ggplot(plot_data, aes(x = parasite_burden, y = Rainfall)) + 
+geom_pointrange(aes(ymin = Rainfall - Rainfall, 
+                    ymax = Rainfall + Rainfall)) +
   xlab("") +
-  ylab("Arcobacter") +
-  geom_text(aes(label = "*", y = 100, x = 1.5, fontface = "bold", size = 20)) +
-  ylim(0, 100) +
+  ylab("Rain (m)") +
+  geom_text(aes(label = "*", y = .1, x = 1.5, fontface = "bold", size = 20)) +
   theme(legend.position = "none")) %>% 
   annotate_figure(fig.lab = "B", fig.lab.face = "bold", fig.lab.size = 20),
 
-
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = NS4_marine_group)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
-  xlab("") +
-  ylab("NS4 marine group") +
-  geom_text(aes(label = "*", y = 5000, x = 1.5, fontface = "bold", size = 20)) +
-  ylim(0, 5000) +
-  theme(legend.position = "none")) %>% 
-  annotate_figure(fig.lab = "C", fig.lab.face = "bold", fig.lab.size = 20),
-
-
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = RainGauge_mm)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
-  xlab("") +
-  ylab("Rain (mm)") +
-  geom_text(aes(label = "*", y = 1000, x = 1.5, fontface = "bold", size = 20)) +
-  ylim(0, 750) +
-  theme(legend.position = "none")) %>% 
-  annotate_figure(fig.lab = "D", fig.lab.face = "bold", fig.lab.size = 20),
-
-
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = RDO_Conc_mgL)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
-  xlab("") +
-  ylab("RDO (mg/L)") +
-  ylim(0, 10) +
-  theme(legend.position = "none")) %>% 
-  annotate_figure(fig.lab = "E", fig.lab.face = "bold", fig.lab.size = 20),
-
-
-(ggplot(metadata_with_taxa, aes(x = parasite_burden, y = Salinity_PSU)) + 
-  geom_boxplot(fatten = NULL) +
-  stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
-               width = 0.75, size = 1, linetype = "solid") +
-  xlab("") +
-  ylab("Salinity (PSU)") +
-  ylim(30, 35) +
-  theme(legend.position = "none")) %>% 
-  annotate_figure(fig.lab = "F", fig.lab.face = "bold", fig.lab.size = 20),
-  
-ncol = 3, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize = 12))
+ncol = 2, bottom = textGrob("Cryptocaryon abundance (eDNA)", gp = gpar(fontsize = 12))
 )
 ```
 
