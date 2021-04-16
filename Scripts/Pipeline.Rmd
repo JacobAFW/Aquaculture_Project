@@ -345,8 +345,8 @@ ID_Dates$Date <- revalue(ID_Dates$Date, c("3/03/20" = "3/3/20",
 
 Read in Metadata, filter for corresponding dates (with *ID-Dates*), and get the averages for each day.
  - *NB.* The original metadata file was in html format, and the conversion to excel/csv reformats the dates, and not all in the same way. Thus the dates below have to be revalued to the same format as the ID. This doesn't pose any issues because the sampling finished in september so there is no chance of using the wrong dates. 
-```{r,message=F, warning=F, eval=F}
-Env_Metadata <- read.csv("Metadata/Metadata_updated.csv" ) %>% # Read in data
+```{r,message=F, warning=F}
+Env_Metadata <- read.csv("C:/Users/Jacob/Desktop/Other_Projects/Aquaculture_Microbiome/Metadata/Metadata_updated.csv") %>% # Read in data
   slice(8:n()) %>% # Delete empty rows
   row_to_names(1) %>% # Convert first row to column names
   separate(1, into = c("Date", "Time"), sep = "\\s") # Seperate the date and time into seperatre columns
@@ -356,31 +356,39 @@ Env_Metadata$Date <- revalue(Env_Metadata$Date, c("11/2/20" = "2/11/20", # Reval
                                           "12/5/20" = "5/12/20", 
                                           "9/6/20" = "6/9/20"))
 
+
 Env_Metadata <- Env_Metadata %>% # filter for only the dates that align the 16S collection dates
-            filter(Date == "2/11/20"| Date == "2/18/20" | Date == "2/25/20" |
-                   Date == "3/3/20" | Date == "3/10/20" | Date == "3/17/20" |
-                   Date == "3/24/20" | Date == "3/31/20" | Date == "4/7/20" |
-                   Date == "4/14/20"| Date == "4/21/20" | Date == "4/28/20" | 
-                   Date == "5/5/20" | Date == "5/12/20" | Date == "5/19/20" | 
-                   Date == "5/26/20" | Date == "6/2/20" | Date == "6/9/20" | 
-                   Date == "6/16/20" | Date == "6/23/20" | Date == "6/30/20" |
-                   Date == "7/7/20" | Date == "7/14/20"|Date == "7/21/20" | Date == "7/28/20") %>% 
-            mutate(Time = as.numeric(gsub(":", "", Time))) %>% # remove colon and convert time to numeric
-            filter(Time %in% (40000:100000)) %>% # filter to only include times between 4am and 10am - 16S colletion time was between 9 and 10
-            select(-3) %>%
+            filter(Week == "7"| Week == "8" | Week == "9" |
+                   Week == "10" | Week == "11" | Week == "12" |
+                   Week == "13" | Week == "14" | Week == "15" |
+                   Week == "16" | Week == "17" | Week == "18" | 
+                   Week == "19" | Week == "20" | Week == "21" | 
+                   Week == "22" | Week == "23" | Week == "24" | 
+                   Week == "25" | Week == "26" | Week == "27" |
+                   Week == "28" | Week == "29"|Week == "30" | Week == "31") %>% 
+            select(-c(2,3)) %>%
             mutate_if(is.factor, as.character) %>% # convert to characters so that numeric conversion retains decimal place
             mutate_at(c("Temperature_C", "pH", "Turbidity_NTU", 
-                        "RDO_Conc_mgL", "ORP_mV", "RainGauge_mm", 
+                        "RDO_Conc_mgL", "ORP_mV", "Rainfall", "RainGauge_mm",
                         "Salinity_PSU"), as.numeric) %>% 
-            mutate_if(is.character, as.factor) %>%
-            group_by(Date) %>% # get the averages for the variables on the dates of 16S sample collection
-            dplyr::summarise(Temperature_C = mean(Temperature_C), 
+            mutate_if(is.character, as.factor) %>% 
+            group_by(Week) %>% # get the averages for the variables on the dates of 16S sample collection
+            dplyr::summarise(Temperature_C = mean(Temperature_C, na.rm=T), 
                              pH = mean(pH, na.rm=T), 
-                             Turbidity_NTU = mean(Turbidity_NTU),
-                             RDO_Conc_mgL = mean(RDO_Conc_mgL),
-                             ORP_mV = mean(ORP_mV),
-                             RainGauge_mm = mean(RainGauge_mm),
-                             Salinity_PSU = mean(Salinity_PSU, na.rm=T))
+                             Turbidity_NTU = mean(Turbidity_NTU, na.rm=T),
+                             RDO_Conc_mgL = mean(RDO_Conc_mgL, na.rm=T),
+                             ORP_mV = mean(ORP_mV, na.rm=T),
+                             Rainfall = mean(Rainfall, na.rm=T),
+                             RainGauge_mm = mean(RainGauge_mm, na.rm=T),
+                             Salinity_PSU = mean(Salinity_PSU, na.rm=T)) %>%
+  mutate(Week = as.character(Week)) %>%
+  mutate(Week = as.numeric(Week)) %>% 
+  arrange(Week) %>% 
+  add_column(Date = c("2/11/20", "2/18/20", "2/25/20", "3/3/20", "3/10/20", "3/17/20",
+                      "3/24/20", "3/31/20", "4/7/20", "4/14/20", "4/21/20", "4/28/20", 
+                      "5/5/20", "5/12/20", "5/19/20", "5/26/20", "6/2/20", "6/9/20", 
+                      "6/16/20", "6/23/20", "6/30/20", "7/7/20", "7/14/20", "7/21/20", 
+                      "7/28/20"))
 ```
 
 
