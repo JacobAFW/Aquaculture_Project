@@ -81,7 +81,6 @@ filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
  - `maxEE = c(2,2)` is for filtering, where the higher the value the more relaxed filtering,allowing more reads to get through. 
  - Good quality data should allow for more stringent parameters (2 is stringent).
  - The number of reads filtered is checked. If reads are too low, can alter parameters.
- - **225 produces no reads out... Are the reads only 200bp long? - ask Giana**
  
 ```{r, warning=F, message=F, eval=F}
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = c(220, 220), 
@@ -192,6 +191,12 @@ colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "n
 rownames(track) <- sample.names
 
 head(track)
+tail(track)
+
+track %>% 
+  as.data.frame() %>% 
+  summarise_all(mean) %>% 
+  knitr::kable()
 ```
 
 ## Contamination removal with *MicroDecon*.
@@ -915,9 +920,9 @@ plot_richness(ps2.Microbiome, measures = c("Shannon", "Observed"),
               x = "parasite_burden", color = "parasite_burden", title = "") +
               geom_jitter(size = 1, alpha = 0.7) +
               geom_boxplot() +
-              theme(panel.border = element_rect(colour = "grey", fill = NA, size = 1), legend.position = "none", 
+              theme(panel.border = element_rect(colour = "grey", fill = NA, size = 1), 
               axis.text.x = element_blank(), axis.ticks = element_blank()) + 
-              stat_compare_means()
+              stat_compare_means() + xlab("Cryptocaryon")
 ```
 
  - Export boxplot.
@@ -1631,11 +1636,22 @@ ggplot(aes(x = ddPCR, y = Shannon)) +
 
 Run a unviariate model to see if Shannon diversity is statistically associated with cryptocaryon.
 ```{r}
+ps_metadata <- ps_metadata %>% 
+  mutate_if(is.character, as.factor)
+
 lmer(ddPCR ~ Shannon + (1|Date), data = ps_metadata) %>% 
   car::Anova() %>% 
   as.data.frame(row.names = NULL)
 
 lm(ddPCR ~ Shannon, data = ps_metadata) %>% 
+  car::Anova() %>% 
+  as.data.frame(row.names = NULL)
+
+lmer(ddPCR ~ Shannon + (1|Date), data = ps_metadata, family()) %>% 
+  car::Anova() %>% 
+  as.data.frame(row.names = NULL)
+
+lme4::glmer(parasite_burden ~ Shannon + (1|Date), data = ps_metadata, family = "binomial") %>% 
   car::Anova() %>% 
   as.data.frame(row.names = NULL)
 ```
