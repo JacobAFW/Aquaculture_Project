@@ -1,4 +1,4 @@
-# Aquaculture_Project
+# Environmental factors affecting seasonality of ciliate parasite and bacterial microbiome in a marine fish farm from Hong Kong.
 
 This repository contains the analysis for a project exploring the relationship between the parasite Cryptocaryon and both the aquatic bacterial microbiome (16S rRNA gene amplicon sequencing) and a collection of environmental parameters (collected over several months).
 
