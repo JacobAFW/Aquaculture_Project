@@ -9,4 +9,4 @@ Heatmaps were use to explore potential associations between both water quality p
 
 A generalised logistic regression model (binomial) was used to explore the effect of both the microbiome and water quality parameters on Cryptocaryon abundance (high vs low) using *lme4*'s `glmer()`. Negative-binomial modelling with *DESeq2* was used (likelihood ratio test) to identify genera associated with Cryptocaryon abundance. Then, both the resulting *DESeq2*-normalised counts and water quality parameters were centred and scaled to avoid convergence issues, and multicollinearity assessed, and collinear variables subsequently removed. An initial optimal model was created with, which subsequently went through backwards selection find the least complex adequate model. The significance of the fixed effects variables in this final model was then assessed using analysis of deviance (Type II Wald Chi-square test) from the *car* package. 
 
-A link to the manuscript will be provided once published.
+A link to the manuscript: https://www.mdpi.com/1424-2818/13/8/350
